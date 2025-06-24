@@ -1,8 +1,12 @@
+import streamlit as st
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
 import ta
 from datetime import datetime
+
+st.title("BIST100 Teknik Analiz")
+st.write("Günlük AL/SAT sinyali üreten sistem)
 
 # Hisse listesini CSV'den al
 df = pd.read_csv("bist100.csv")
