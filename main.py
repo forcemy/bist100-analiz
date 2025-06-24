@@ -1,84 +1,67 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import pandas_ta as ta
-import ta
+from ta.momentum import RSIIndicator, StochRSIIndicator
+from ta.trend import MACD, ADXIndicator
+from ta.volatility import BollingerBands
+from ta.volume import OnBalanceVolumeIndicator
 from datetime import datetime
 
-st.title("📊 BIST100 Teknik Analiz Aracı")
+st.title("BIST100 Teknik Analiz")
 st.write("Günlük AL/SAT sinyali üreten sistem")
 
-# Hisse listesini CSV'den al
+# Hisse listesini CSV'den oku
 df = pd.read_csv("bist100.csv")
 bist100 = df["symbol"].tolist()
 
 al_sinyali_gelenler = []
-log_list = []  # Günlük analiz verilerini CSV olarak saklamak için
+log_list = []
 
 for sembol in bist100:
     try:
         st.write(f"⏳ {sembol} analiz ediliyor...")
 
-        # Verileri indir
         data = yf.download(sembol, period="6mo", interval="1d", progress=False)
-
-        # Eğer veri yoksa atla
         if data.empty:
-            st.warning(f"⚠️ {sembol} için veri bulunamadı.")
+            st.warning(f"{sembol} için veri bulunamadı.")
             continue
 
-        # MultiIndex varsa düzleştir
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.get_level_values(0)
+        # RSI
+        data["rsi"] = RSIIndicator(close=data["Close"]).rsi()
 
-        # RSI & MACD
-        data.ta.rsi(length=14, append=True)
-        data.ta.macd(append=True)
+        # MACD
+        macd = MACD(close=data["Close"])
+        data["macd"] = macd.macd()
+        data["macd_signal"] = macd.macd_signal()
 
         # Bollinger Bands
-        bb = ta.volatility.BollingerBands(close=data["Close"])
-        data["bb_upper"] = bb.bollinger_hband()
-        data["bb_middle"] = bb.bollinger_mavg()
+        bb = BollingerBands(close=data["Close"])
         data["bb_lower"] = bb.bollinger_lband()
 
         # StochRSI
-        stochrsi = ta.momentum.StochRSIIndicator(close=data["Close"])
-        data["stochrsi"] = stochrsi.stochrsi_k()
+        data["stochrsi"] = StochRSIIndicator(close=data["Close"]).stochrsi_k()
 
         # MA20 - MA50
-        data["ma20"] = data["Close"].rolling(window=20).mean()
-        data["ma50"] = data["Close"].rolling(window=50).mean()
+        data["ma20"] = data["Close"].rolling(20).mean()
+        data["ma50"] = data["Close"].rolling(50).mean()
 
-        # Volume ve OBV
-        data["volume_ma20"] = data["Volume"].rolling(window=20).mean()
-        obv = ta.volume.OnBalanceVolumeIndicator(close=data["Close"], volume=data["Volume"])
-        data["obv"] = obv.on_balance_volume()
+        # Volume MA20 ve OBV
+        data["volume_ma20"] = data["Volume"].rolling(20).mean()
+        data["obv"] = OnBalanceVolumeIndicator(close=data["Close"], volume=data["Volume"]).on_balance_volume()
 
         # ADX
-        adx = ta.trend.ADXIndicator(high=data["High"], low=data["Low"], close=data["Close"])
-        data["adx"] = adx.adx()
+        data["adx"] = ADXIndicator(high=data["High"], low=data["Low"], close=data["Close"]).adx()
 
-        # En güncel veriyi al
         latest = data.iloc[-1]
-
-        # Karar puanlaması
         puan = 0
-        if latest['RSI_14'] < 30:
-            puan += 1
-        if latest['MACD_12_26_9'] > latest['MACDs_12_26_9']:
-            puan += 1
-        if latest['Close'] < latest['bb_lower']:
-            puan += 1
-        if latest['stochrsi'] < 0.2:
-            puan += 1
-        if latest['ma20'] > latest['ma50']:
-            puan += 1
-        if latest['Volume'] > latest['volume_ma20']:
-            puan += 1
-        if latest['adx'] > 20:
-            puan += 1
+        if latest["rsi"] < 30: puan += 1
+        if latest["macd"] > latest["macd_signal"]: puan += 1
+        if latest["Close"] < latest["bb_lower"]: puan += 1
+        if latest["stochrsi"] < 20: puan += 1
+        if latest["ma20"] > latest["ma50"]: puan += 1
+        if latest["Volume"] > latest["volume_ma20"]: puan += 1
+        if latest["adx"] > 20: puan += 1
 
-        # Sinyal yorumu
         if puan >= 5:
             sinyal = "GÜÇLÜ AL"
             al_sinyali_gelenler.append(sembol)
@@ -92,40 +75,39 @@ for sembol in bist100:
         else:
             sinyal = "GÜÇLÜ SAT"
 
-        st.success(f"{sembol} için sinyal: {sinyal} ({puan} puan)")
+        st.success(f"{sembol}: {sinyal} ({puan} puan)")
 
-        # Log bilgisi ekle
         log_list.append({
             "Tarih": datetime.now().strftime("%Y-%m-%d"),
             "Symbol": sembol,
-            "Close": latest['Close'],
-            "RSI": latest['RSI_14'],
-            "MACD": latest['MACD_12_26_9'],
-            "MACD_Sinyal": latest['MACDs_12_26_9'],
-            "StochRSI": latest['stochrsi'],
-            "MA20": latest['ma20'],
-            "MA50": latest['ma50'],
-            "BB_Lower": latest['bb_lower'],
-            "Volume": latest['Volume'],
-            "Volume_MA20": latest['volume_ma20'],
-            "OBV": latest['obv'],
-            "ADX": latest['adx'],
+            "Close": latest["Close"],
+            "RSI": latest["rsi"],
+            "MACD": latest["macd"],
+            "MACD_Sinyal": latest["macd_signal"],
+            "StochRSI": latest["stochrsi"],
+            "MA20": latest["ma20"],
+            "MA50": latest["ma50"],
+            "BB_Lower": latest["bb_lower"],
+            "Volume": latest["Volume"],
+            "Volume_MA20": latest["volume_ma20"],
+            "OBV": latest["obv"],
+            "ADX": latest["adx"],
             "Skor": puan,
             "Sinyal": sinyal
         })
 
     except Exception as e:
-        st.error(f"⚠️ {sembol} için analiz hatası: {e}")
+        st.error(f"{sembol} için analiz hatası: {e}")
 
-# Özet gösterimi
-st.subheader("📋 Özet: AL ve GÜÇLÜ AL Sinyali Gelen Hisseler")
+# Özet
+st.write("## 📊 AL Sinyali Gelen Hisseler")
 if al_sinyali_gelenler:
     for hisse in al_sinyali_gelenler:
         st.write(f"✅ {hisse}")
 else:
     st.write("📭 Bugün AL sinyali veren hisse bulunamadı.")
 
-# CSV log dosyasını kaydet ve göster
+# CSV kaydet
 log_df = pd.DataFrame(log_list)
 log_df.to_csv("günlük_analiz_log.csv", index=False)
-st.download_button("📥 Log dosyasını indir", data=log_df.to_csv(index=False), file_name="günlük_analiz_log.csv", mime="text/csv")
+st.success("💾 'günlük_analiz_log.csv' olarak kayıt yapıldı.")
