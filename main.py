@@ -114,8 +114,7 @@ for sembol in bist100:
         st.write(f"⚠️ {sembol} için analiz hatası: {e}")
 
 # Özet
-if al_sinyali_gelenler:
-st.write("\n📊 Özet: AL Sinyali Gelen Hisseler") 
+st.write("\n📊 Özet: AL Sinyali Gelen Hisseler") if al_sinyali_gelenler:
     for hisse in al_sinyali_gelenler:
         st.write(f"✅ {hisse}")
 else:
