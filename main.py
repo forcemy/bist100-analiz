@@ -1,38 +1,41 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import ta
-from datetime import datetime
+import pandas_ta as ta
 
 st.title("BIST 100 Teknik Analiz")
 
 # CSV dosyasını oku
 bist100_df = pd.read_csv("bist100.csv")
+
+# Hisse sembollerini al
 semboller = bist100_df["Sembol"].dropna().unique().tolist()
 
+# Gerekirse .IS ekle
+semboller = [s if s.endswith(".IS") else s + ".IS" for s in semboller]
+
 for sembol in semboller:
-    st.write(f"⏳ {sembol}.IS analiz ediliyor...")
+    st.markdown(f"⏳ {sembol} analiz ediliyor...")
 
     try:
-        data = yf.download(f"{sembol}.IS", period="6mo", interval="1d")
+        data = yf.download(sembol, period="6mo", interval="1d")
 
         if data.empty:
-            st.error(f"{sembol}.IS için veri alınamadı.")
+            st.error(f"{sembol} için veri bulunamadı.")
             continue
 
+        # Sadece 'Close' sütunu üzerinden analiz
         close = data["Close"]
-        if len(close.shape) == 2:
-            close = close.squeeze()
 
-        # RSI
-        rsi = ta.momentum.RSIIndicator(close=close).rsi()
+        # Teknik indikatör hesapla (örnek: RSI)
+        try:
+            rsi = ta.rsi(close)
+        except Exception as e:
+            st.error(f"{sembol} için RSI hesaplanamadı: {e}")
+            continue
 
-        # MACD
-        macd = ta.trend.MACD(close=close)
-        macd_line = macd.macd()
-        signal_line = macd.macd_signal()
-
-        st.success(f"{sembol}.IS RSI: {rsi.iloc[-1]:.2f}, MACD: {macd_line.iloc[-1]:.2f}, Signal: {signal_line.iloc[-1]:.2f}")
+        # RSI görselleştir
+        st.line_chart(rsi, height=150)
 
     except Exception as e:
-        st.error(f"{sembol}.IS için analiz hatası: {e}")
+        st.error(f"{sembol} için analiz hatası: {e}")
