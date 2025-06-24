@@ -17,14 +17,14 @@ log_list = []  # Günlük analiz verilerini CSV olarak saklamak için
 
 for sembol in bist100:
     try:
-        print(f"\n⏳ {sembol} analiz ediliyor...")
+        st.write(f"\n⏳ {sembol} analiz ediliyor...")
 
         # Verileri indir
         data = yf.download(sembol, period="6mo", interval="1d", progress=False)
 
         # Eğer veri yoksa atla
         if data.empty:
-            print(f"⚠️ {sembol} için veri bulunamadı.")
+            st.write(f"⚠️ {sembol} için veri bulunamadı.")
             continue
 
         # MultiIndex varsa düzleştir
@@ -92,7 +92,7 @@ for sembol in bist100:
         else:
             sinyal = "GÜÇLÜ SAT"
 
-        print(f"📈 Sinyal: {sinyal} ({puan} puan)")
+        st.write(f"📈 Sinyal: {sinyal} ({puan} puan)")
 
         # Log bilgisi ekle
         log_list.append({
@@ -115,16 +115,17 @@ for sembol in bist100:
         })
 
     except Exception as e:
-        print(f"⚠️ {sembol} için analiz hatası: {e}")
+        st.write(f"⚠️ {sembol} için analiz hatası: {e}")
 
 # Özet
-print("\n📊 Özet: AL Sinyali Gelen Hisseler") if al_sinyali_gelenler:
-    for hisse in al_sinyali_gelenler:
-        print(f"✅ {hisse}")
+if al_sinyali_gelenler:
+st.write("\n📊 Özet: AL Sinyali Gelen Hisseler") 
+for hisse in al_sinyali_gelenler:
+        st.write(f"✅ {hisse}")
 else:
-    print("📭 Bugün AL sinyali veren hisse bulunamadı.")
+    st.write("📭 Bugün AL sinyali veren hisse bulunamadı.")
 
 # CSV log dosyasını kaydet
 log_df = pd.DataFrame(log_list)
 log_df.to_csv("günlük_analiz_log.csv", index=False)
-print("\n💾 Günlük analiz sonuçları 'günlük_analiz_log.csv' olarak kaydedildi.")
+st.write("\n💾 Günlük analiz sonuçları 'günlük_analiz_log.csv' olarak kaydedildi.")
