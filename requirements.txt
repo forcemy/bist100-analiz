@@ -4,3 +4,4 @@ pandas
 ta
 pandas_ta
 setuptools
+numpy>=1.23.0
