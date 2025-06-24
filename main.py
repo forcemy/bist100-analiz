@@ -5,7 +5,7 @@ import pandas_ta as ta
 import ta
 from datetime import datetime
 
-st.title("BIST100 Teknik Analiz")
+st.title("📊 BIST100 Teknik Analiz Aracı")
 st.write("Günlük AL/SAT sinyali üreten sistem")
 
 # Hisse listesini CSV'den al
@@ -17,14 +17,14 @@ log_list = []  # Günlük analiz verilerini CSV olarak saklamak için
 
 for sembol in bist100:
     try:
-        st.write(f"\n⏳ {sembol} analiz ediliyor...")
+        st.write(f"⏳ {sembol} analiz ediliyor...")
 
         # Verileri indir
         data = yf.download(sembol, period="6mo", interval="1d", progress=False)
 
         # Eğer veri yoksa atla
         if data.empty:
-            st.write(f"⚠️ {sembol} için veri bulunamadı.")
+            st.warning(f"⚠️ {sembol} için veri bulunamadı.")
             continue
 
         # MultiIndex varsa düzleştir
@@ -92,7 +92,7 @@ for sembol in bist100:
         else:
             sinyal = "GÜÇLÜ SAT"
 
-        st.write(f"📈 Sinyal: {sinyal} ({puan} puan)")
+        st.success(f"{sembol} için sinyal: {sinyal} ({puan} puan)")
 
         # Log bilgisi ekle
         log_list.append({
@@ -115,17 +115,17 @@ for sembol in bist100:
         })
 
     except Exception as e:
-        st.write(f"⚠️ {sembol} için analiz hatası: {e}")
+        st.error(f"⚠️ {sembol} için analiz hatası: {e}")
 
-# Özet
+# Özet gösterimi
+st.subheader("📋 Özet: AL ve GÜÇLÜ AL Sinyali Gelen Hisseler")
 if al_sinyali_gelenler:
-st.write("\n📊 Özet: AL Sinyali Gelen Hisseler") 
-for hisse in al_sinyali_gelenler:
+    for hisse in al_sinyali_gelenler:
         st.write(f"✅ {hisse}")
 else:
     st.write("📭 Bugün AL sinyali veren hisse bulunamadı.")
 
-# CSV log dosyasını kaydet
+# CSV log dosyasını kaydet ve göster
 log_df = pd.DataFrame(log_list)
 log_df.to_csv("günlük_analiz_log.csv", index=False)
-st.write("\n💾 Günlük analiz sonuçları 'günlük_analiz_log.csv' olarak kaydedildi.")
+st.download_button("📥 Log dosyasını indir", data=log_df.to_csv(index=False), file_name="günlük_analiz_log.csv", mime="text/csv")
