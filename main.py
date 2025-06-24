@@ -4,61 +4,35 @@ import yfinance as yf
 import ta
 from datetime import datetime
 
-# Başlık
 st.title("BIST 100 Teknik Analiz")
 
 # CSV dosyasını oku
-try:
-    bist100_df = pd.read_csv("bist100.csv")
-except FileNotFoundError:
-    st.error("CSV dosyası bulunamadı. Lütfen 'bist100.csv' dosyasını yükleyin.")
-    st.stop()
-
-# Sembol sütunu var mı kontrol et
-if "Sembol" not in bist100_df.columns:
-    st.error("'Sembol' adında bir sütun bulunamadı.")
-    st.stop()
-
-# Hisse sembollerini al
+bist100_df = pd.read_csv("bist100.csv")
 semboller = bist100_df["Sembol"].dropna().unique().tolist()
 
-# Her sembol için analiz
 for sembol in semboller:
-    # .IS ekleme kontrolü
-    if not sembol.endswith(".IS"):
-        yf_sembol = sembol + ".IS"
-    else:
-        yf_sembol = sembol
-
-    st.markdown(f"⏳ **{sembol}** analiz ediliyor...")
+    st.write(f"⏳ {sembol}.IS analiz ediliyor...")
 
     try:
-        data = yf.download(yf_sembol, period="6mo", interval="1d")
+        data = yf.download(f"{sembol}.IS", period="6mo", interval="1d")
+
         if data.empty:
-            st.warning(f"{sembol} için veri bulunamadı.")
+            st.error(f"{sembol}.IS için veri alınamadı.")
             continue
 
-        data.dropna(inplace=True)
+        close = data["Close"]
+        if len(close.shape) == 2:
+            close = close.squeeze()
 
-        # İndikatörleri hesapla
-        data["RSI"] = ta.momentum.RSIIndicator(close=data["Close"]).rsi()
-        data["MACD"] = ta.trend.MACD(close=data["Close"]).macd()
-        data["Signal"] = ta.trend.MACD(close=data["Close"]).macd_signal()
+        # RSI
+        rsi = ta.momentum.RSIIndicator(close=close).rsi()
 
-        latest = data.iloc[-1]
+        # MACD
+        macd = ta.trend.MACD(close=close)
+        macd_line = macd.macd()
+        signal_line = macd.macd_signal()
 
-        st.subheader(sembol)
-        st.write(f"🔹 RSI: {latest['RSI']:.2f}")
-        st.write(f"🔹 MACD: {latest['MACD']:.2f}")
-        st.write(f"🔹 Signal: {latest['Signal']:.2f}")
-
-        # Sinyal üretimi
-        if latest["RSI"] < 30 and latest["MACD"] > latest["Signal"]:
-            st.success("📈 AL Sinyali")
-        elif latest["RSI"] > 70 and latest["MACD"] < latest["Signal"]:
-            st.error("📉 SAT Sinyali")
-        else:
-            st.info("⏸️ NÖTR Sinyal")
+        st.success(f"{sembol}.IS RSI: {rsi.iloc[-1]:.2f}, MACD: {macd_line.iloc[-1]:.2f}, Signal: {signal_line.iloc[-1]:.2f}")
 
     except Exception as e:
-        st.error(f"{sembol} için analiz hatası: {e}")
+        st.error(f"{sembol}.IS için analiz hatası: {e}")
