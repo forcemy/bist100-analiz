@@ -3,3 +3,4 @@ pandas
 yfinance
 ta
 pandas-ta
+setuptools
